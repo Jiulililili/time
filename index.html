@@ -107,7 +107,7 @@ canvas{
 
 <!-- ===== 存取款 ===== -->
 <div class="section">
-<h3>💰 存取款</h3>
+<h3>💰 存取时间</h3>
 金额：<br>
 <input type="number" id="amount" placeholder="输入金额"><br>
 原因：<br>
@@ -119,11 +119,11 @@ canvas{
 <!-- ===== 贷款 ===== -->
 <div class="section">
 <h3>🏦 申请贷款</h3>
-贷款金额：<br>
-<input type="number" id="loanAmount" placeholder="贷款金额"><br>
+贷款时间：<br>
+<input type="number" id="loanAmount" placeholder="贷款时间"><br>
 利率 %：<br>
 <input type="number" id="interest" placeholder="例如：5"><br>
-总期数（自定义）：<br>
+总期数：<br>
 <input type="number" id="terms" placeholder="例如：10"><br><br>
 <button class="loan" onclick="takeLoan()">申请贷款</button>
 <p id="loanInfo"></p>
@@ -150,7 +150,7 @@ canvas{
 
 <!-- ===== 图表筛选 ===== -->
 <div class="section">
-<h3>📈 余额曲线（可选时间段）</h3>
+<h3>📈 余额曲线</h3>
 起始日期：
 <input type="date" id="startDate">
 结束日期：
@@ -161,7 +161,7 @@ canvas{
 
 <!-- ===== 交易记录 ===== -->
 <div class="section">
-<h3>📜 交易记录（可按日期筛选）</h3>
+<h3>📜 交易记录</h3>
 <table>
 <tr>
 <th>时间</th><th>类型</th><th>金额</th><th>余额</th><th>剩余欠款</th><th>原因</th>
@@ -172,7 +172,7 @@ canvas{
 
 <!-- ====== 新增：三种导出 ====== -->
 <div class="section">
-<h3>📤 数据导出（可跨设备 + 报告）</h3>
+<h3>📤 数据导出</h3>
 
 <button class="export-json" onclick="exportAllJSON()">
 📦 导出全部数据（JSON）
@@ -187,7 +187,7 @@ canvas{
 </button>
 
 <button class="export-pdf" onclick="exportPDF()">
-📄 导出时间段 PDF（含图表）
+📄 导出时间段 PDF
 </button>
 
 </div>
@@ -473,3 +473,4 @@ if('serviceWorker' in navigator){
 </script>
 </body>
 </html>
+
