@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>还剩几小时？</title>
+
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1e3c72">
+<link rel="apple-touch-icon" href="/icons/clock-192.png">
+
+<!-- ===== 必要外部库（Excel + PDF） ===== -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body{
+    font-family: "Microsoft YaHei";
+    background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+    margin:0;
+}
+.container{
+    max-width: 900px;
+    margin:0 auto;
+    background:white;
+    min-height:100vh;
+    padding:15px;
+}
+.header{
+    background:#1e3c72;
+    color:white;
+    padding:12px;
+    text-align:center;
+    font-size:20px;
+    border-radius:8px;
+}
+.section{
+    border:1px solid #ddd;
+    padding:15px;
+    margin:10px 0;
+    border-radius:10px;
+}
+.flex{ display:flex; gap:10px; flex-wrap:wrap; }
+.card{
+    flex:1;
+    padding:12px;
+    border-radius:10px;
+    text-align:center;
+    min-width:150px;
+}
+.balance-card{ background:#e8f5e9; }
+.debt-card{ background:#ffebee; }
+
+button{
+    padding:10px;
+    border:none;
+    border-radius:8px;
+    color:white;
+    margin:5px 0;
+    cursor:pointer;
+}
+.deposit{ background:#2ecc71; }
+.withdraw{ background:#e74c3c; }
+.loan{ background:#f39c12; }
+.repay{ background:#8e44ad; }
+.save{ background:#3498db; }
+.reset{ background:#95a5a6; }
+
+.export{ background:#2980b9; }
+.export-json{ background:#34495e; }
+.export-excel{ background:#27ae60; }
+.export-pdf{ background:#c0392b; }
+
+.clear-term{ background:#16a085; }
+
+table{ width:100%; border-collapse: collapse; }
+th,td{
+    border:1px solid #ddd;
+    padding:6px;
+    text-align:center;
+    font-size:14px;
+}
+canvas{
+    width:100%;
+    height:320px;
+    border:1px solid #ddd;
+}
+.gray{ background:#eee; color:#aaa; }
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<div class="header">🏦 还剩几小时？</div>
+
+<div class="section flex">
+  <div class="card balance-card">
+    <h3>当前余额</h3>
+    <h2>¥ <span id="balance">0.00</span></h2>
+  </div>
+  <div class="card debt-card">
+    <h3>剩余欠款</h3>
+    <h2>¥ <span id="debt">0.00</span></h2>
+  </div>
+</div>
+
+<!-- ===== 存取款 ===== -->
+<div class="section">
+<h3>💰 存取款</h3>
+金额：<br>
+<input type="number" id="amount" placeholder="输入金额"><br>
+原因：<br>
+<input type="text" id="reason" placeholder="请输入存/取款原因"><br><br>
+<button class="deposit" onclick="deposit()">存入</button>
+<button class="withdraw" onclick="withdraw()">取出</button>
+</div>
+
+<!-- ===== 贷款 ===== -->
+<div class="section">
+<h3>🏦 申请贷款</h3>
+贷款金额：<br>
+<input type="number" id="loanAmount" placeholder="贷款金额"><br>
+利率 %：<br>
+<input type="number" id="interest" placeholder="例如：5"><br>
+总期数（自定义）：<br>
+<input type="number" id="terms" placeholder="例如：10"><br><br>
+<button class="loan" onclick="takeLoan()">申请贷款</button>
+<p id="loanInfo"></p>
+</div>
+
+<!-- ===== 还款 ===== -->
+<div class="section">
+<h3>💸 还款</h3>
+还款金额：<br>
+<input type="number" id="repayAmount" placeholder="还款金额"><br>
+<button class="repay" onclick="repay()">立即还款</button>
+</div>
+
+<!-- ===== 分期表 ===== -->
+<div class="section">
+<h3>📅 还款分期表</h3>
+<table>
+<tr>
+<th>期数</th><th>每期应还</th><th>操作</th>
+</tr>
+<tbody id="schedule"></tbody>
+</table>
+</div>
+
+<!-- ===== 图表筛选 ===== -->
+<div class="section">
+<h3>📈 余额曲线（可选时间段）</h3>
+起始日期：
+<input type="date" id="startDate">
+结束日期：
+<input type="date" id="endDate">
+<button onclick="drawChart()">筛选并重画</button>
+<canvas id="chart"></canvas>
+</div>
+
+<!-- ===== 交易记录 ===== -->
+<div class="section">
+<h3>📜 交易记录（可按日期筛选）</h3>
+<table>
+<tr>
+<th>时间</th><th>类型</th><th>金额</th><th>余额</th><th>剩余欠款</th><th>原因</th>
+</tr>
+<tbody id="history"></tbody>
+</table>
+</div>
+
+<!-- ====== 新增：三种导出 ====== -->
+<div class="section">
+<h3>📤 数据导出（可跨设备 + 报告）</h3>
+
+<button class="export-json" onclick="exportAllJSON()">
+📦 导出全部数据（JSON）
+</button>
+
+<button class="export-json" onclick="exportFilteredJSON()">
+📦 导出时间段 JSON
+</button>
+
+<button class="export-excel" onclick="exportExcel()">
+📊 导出时间段 Excel
+</button>
+
+<button class="export-pdf" onclick="exportPDF()">
+📄 导出时间段 PDF（含图表）
+</button>
+
+</div>
+
+<div class="section">
+<button class="save" onclick="saveData()">保存数据</button>
+<button class="reset" onclick="resetData()">清空所有数据</button>
+</div>
+
+</div>
+
+<script>
+let balance = parseFloat(localStorage.getItem("balance") || 0);
+let debt = parseFloat(localStorage.getItem("debt") || 0);
+let history = JSON.parse(localStorage.getItem("history") || "[]");
+let schedule = JSON.parse(localStorage.getItem("schedule") || "[]");
+
+/* ========== 美化时间 ========== */
+function formatTime(iso){
+  let d = new Date(iso);
+  let y = d.getFullYear();
+  let m = String(d.getMonth()+1).padStart(2,'0');
+  let day = String(d.getDate()).padStart(2,'0');
+  let h = String(d.getHours()).padStart(2,'0');
+  let min = String(d.getMinutes()).padStart(2,'0');
+  let s = String(d.getSeconds()).padStart(2,'0');
+  return `${y}-${m}-${day} ${h}:${min}:${s}`;
+}
+
+/* ========== UI ========== */
+function updateUI(){
+    document.getElementById("balance").innerText = balance.toFixed(2);
+    document.getElementById("debt").innerText = debt.toFixed(2);
+
+    let h = document.getElementById("history");
+    h.innerHTML = "";
+
+    let start = startDate.value ? new Date(startDate.value) : null;
+    let end = endDate.value ? new Date(endDate.value) : null;
+
+    history.forEach(r=>{
+        let t = new Date(r.time);
+        if(start && t < start) return;
+        if(end && t > end) return;
+
+        h.innerHTML += `
+        <tr>
+        <td>${formatTime(r.time)}</td>
+        <td>${r.type}</td>
+        <td>¥${r.amount}</td>
+        <td>¥${r.balance}</td>
+        <td>¥${r.debt}</td>
+        <td>${r.reason || ""}</td>
+        </tr>`;
+    });
+
+    let s = document.getElementById("schedule");
+    s.innerHTML = "";
+    schedule.forEach((r,i)=>{
+        s.innerHTML += `
+        <tr class="${r.done?'gray':''}">
+        <td>${i+1}</td>
+        <td>¥${r.pay}</td>
+        <td>
+        ${r.done?'已清零':`<button class="clear-term" onclick="clearTerm(${i})">本期还清</button>`}
+        </td>
+        </tr>`;
+    });
+
+    drawChart();
+}
+
+function addRecord(type, amount, reason=""){
+    history.push({
+        time: new Date().toISOString(),
+        type:type,
+        amount:amount.toFixed(2),
+        balance:balance.toFixed(2),
+        debt:debt.toFixed(2),
+        reason:reason
+    });
+}
+
+/* ========== 存取款 ========== */
+function deposit(){
+    let amt = parseFloat(amount.value);
+    let rs = reason.value.trim();
+    if(!rs){ alert("请输入原因"); return; }
+    if(isNaN(amt) || amt<=0){ alert("金额无效"); return; }
+
+    balance += amt;
+    addRecord("存入", amt, rs);
+    updateUI();
+}
+
+function withdraw(){
+    let amt = parseFloat(amount.value);
+    let rs = reason.value.trim();
+    if(!rs){ alert("请输入原因"); return; }
+    if(isNaN(amt) || amt<=0){ alert("金额无效"); return; }
+    if(amt > balance){ alert("余额不足"); return; }
+
+    balance -= amt;
+    addRecord("取出", amt, rs);
+    updateUI();
+}
+
+/* ========== 贷款 ========== */
+function takeLoan(){
+    let L = parseFloat(loanAmount.value);
+    let r = parseFloat(interest.value)/100;
+    let N = parseInt(terms.value);
+
+    if(isNaN(L)||isNaN(r)||isNaN(N)||N<=0){
+        alert("请填写完整且期数>0"); return;
+    }
+
+    let totalRepay = L + L*r;
+    let payPerTerm = totalRepay / N;
+
+    balance += L;
+    debt += totalRepay;
+    addRecord("贷款到账", L, "贷款");
+
+    schedule = [];
+    for(let i=0;i<N;i++){
+        schedule.push({ pay: payPerTerm.toFixed(2), done:false });
+    }
+
+    loanInfo.innerText =
+    `应还总额 ¥${totalRepay.toFixed(2)}，每期 ¥${payPerTerm.toFixed(2)}，共 ${N} 期`;
+
+    updateUI();
+}
+
+/* ========== 逐期清零 ========== */
+function clearTerm(i){
+    let p = parseFloat(schedule[i].pay);
+
+    if(balance < p){
+        alert("余额不足以清本期"); return;
+    }
+
+    balance -= p;
+    debt = Math.max(0, debt - p);
+    schedule[i].done = true;
+    addRecord("还款（第"+(i+1)+"期）", p, "分期还款");
+
+    if(schedule.every(s=>s.done)){
+        alert("🎉 所有欠款已还清！");
+    }
+    updateUI();
+}
+
+/* ========== 普通还款 ========== */
+function repay(){
+    let amt = parseFloat(repayAmount.value);
+    if(isNaN(amt)||amt<=0){ alert("金额无效"); return; }
+    if(balance <= 0){ alert("余额不足"); return; }
+
+    let realPay = Math.min(amt, debt);
+    balance -= realPay;
+    debt -= realPay;
+    addRecord("还款", realPay, "主动还款");
+
+    if(debt === 0){
+        alert("🎉 欠款已全部结清！");
+    }
+    updateUI();
+}
+
+/* ========== 高清图表 ========== */
+function drawChart(){
+    let c = document.getElementById("chart");
+    let ctx = c.getContext("2d");
+
+    let ratio = window.devicePixelRatio || 1;
+    c.width = c.offsetWidth * ratio;
+    c.height = c.offsetHeight * ratio;
+    ctx.scale(ratio, ratio);
+
+    ctx.clearRect(0,0,c.width,c.height);
+
+    let start = startDate.value ? new Date(startDate.value) : null;
+    let end = endDate.value ? new Date(endDate.value) : null;
+
+    let data = history.filter(r=>{
+        let t = new Date(r.time);
+        if(start && t < start) return false;
+        if(end && t > end) return false;
+        return true;
+    });
+
+    if(data.length < 2) return;
+
+    let b = data.map(r=>parseFloat(r.balance));
+    let max = Math.max(...b);
+    let min = Math.min(...b);
+    let step = (c.offsetWidth-60)/(b.length-1);
+
+    ctx.beginPath();
+    ctx.moveTo(40,10);
+    ctx.lineTo(40,c.offsetHeight-30);
+    ctx.lineTo(c.offsetWidth-10,c.offsetHeight-30);
+    ctx.stroke();
+
+    ctx.beginPath();
+    data.forEach((r,i)=>{
+        let v = parseFloat(r.balance);
+        let y = 10 + (max-v)/(max-min||1)*(c.offsetHeight-40);
+        let x = 40 + i*step;
+        i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+    });
+    ctx.strokeStyle="#1e3c72";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+}
+
+/* ================== 新增导出 ================== */
+
+// 3️⃣ 导出时间段 Excel
+function exportExcel(){
+  let start = startDate.value ? new Date(startDate.value) : null;
+  let end = endDate.value ? new Date(endDate.value) : null;
+
+  let filtered = history.filter(r=>{
+    let t = new Date(r.time);
+    if(start && t < start) return false;
+    if(end && t > end) return false;
+    return true;
+  });
+
+  let sheet1 = XLSX.utils.json_to_sheet(filtered);
+  let sheet2 = XLSX.utils.json_to_sheet(schedule);
+
+  let wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, sheet1, "交易记录");
+  XLSX.utils.book_append_sheet(wb, sheet2, "分期表");
+
+  XLSX.writeFile(wb,
+   `bank-report-${startDate.value||'all'}-to-${endDate.value||'all'}.xlsx`);
+}
+
+// 4️⃣ 导出时间段 PDF（含图表）
+function exportPDF(){
+  const { jsPDF } = window.jspdf;
+  let doc = new jsPDF();
+
+  doc.text("银行报告", 10, 10);
+  doc.text(`余额：¥${balance.toFixed(2)}`, 10, 20);
+  doc.text(`欠款：¥${debt.toFixed(2)}`, 10, 30);
+
+  let imgData = document.getElementById("chart").toDataURL("image/png");
+  doc.addImage(imgData, "PNG", 10, 40, 180, 90);
+
+  doc.save(
+   `bank-report-${startDate.value||'all'}-to-${endDate.value||'all'}.pdf`
+  );
+}
+
+/* ========== 保存 ========== */
+function saveData(){
+    localStorage.setItem("balance", balance);
+    localStorage.setItem("debt", debt);
+    localStorage.setItem("history", JSON.stringify(history));
+    localStorage.setItem("schedule", JSON.stringify(schedule));
+    alert("已保存");
+}
+
+function resetData(){
+    if(confirm("确定清空？")){
+        localStorage.clear();
+        balance=0; debt=0; history=[]; schedule=[];
+        updateUI();
+    }
+}
+
+updateUI();
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js');
+}
+</script>
+</body>
+</html>

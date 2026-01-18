@@ -1,0 +1,21 @@
+{
+  "short_name": "还剩几小时？",
+  "name": "银行账户和贷款管理",
+  "description": "一个管理余额、贷款和还款的网页应用",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#1e3c72",
+  "theme_color": "#1e3c72",
+  "icons": [
+    {
+      "src": "/icons/clock-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/clock-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
