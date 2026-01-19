@@ -97,11 +97,11 @@ canvas{
 <div class="section flex">
   <div class="card balance-card">
     <h3>当前余额</h3>
-    <h2>¥ <span id="balance">0.00</span></h2>
+    <h2>Ð <span id="balance">0.00</span></h2>
   </div>
   <div class="card debt-card">
     <h3>剩余欠款</h3>
-    <h2>¥ <span id="debt">0.00</span></h2>
+    <h2>Ð <span id="debt">0.00</span></h2>
   </div>
 </div>
 
@@ -237,9 +237,9 @@ function updateUI(){
         <tr>
         <td>${formatTime(r.time)}</td>
         <td>${r.type}</td>
-        <td>¥${r.amount}</td>
-        <td>¥${r.balance}</td>
-        <td>¥${r.debt}</td>
+        <td>Ð${r.amount}</td>
+        <td>Ð${r.balance}</td>
+        <td>Ð${r.debt}</td>
         <td>${r.reason || ""}</td>
         </tr>`;
     });
@@ -250,7 +250,7 @@ function updateUI(){
         s.innerHTML += `
         <tr class="${r.done?'gray':''}">
         <td>${i+1}</td>
-        <td>¥${r.pay}</td>
+        <td>Ð${r.pay}</td>
         <td>
         ${r.done?'已清零':`<button class="clear-term" onclick="clearTerm(${i})">本期还清</button>`}
         </td>
@@ -318,7 +318,7 @@ function takeLoan(){
     }
 
     loanInfo.innerText =
-    `应还总额 ¥${totalRepay.toFixed(2)}，每期 ¥${payPerTerm.toFixed(2)}，共 ${N} 期`;
+    `应还总额 Ð${totalRepay.toFixed(2)}，每期 Ð${payPerTerm.toFixed(2)}，共 ${N} 期`;
 
     updateUI();
 }
@@ -437,8 +437,8 @@ function exportPDF(){
   let doc = new jsPDF();
 
   doc.text("银行报告", 10, 10);
-  doc.text(`余额：¥${balance.toFixed(2)}`, 10, 20);
-  doc.text(`欠款：¥${debt.toFixed(2)}`, 10, 30);
+  doc.text(`余额：Ð${balance.toFixed(2)}`, 10, 20);
+  doc.text(`欠款：Ð${debt.toFixed(2)}`, 10, 30);
 
   let imgData = document.getElementById("chart").toDataURL("image/png");
   doc.addImage(imgData, "PNG", 10, 40, 180, 90);
@@ -473,4 +473,5 @@ if('serviceWorker' in navigator){
 </script>
 </body>
 </html>
+
 
